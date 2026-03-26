@@ -132,9 +132,19 @@ Conversation history is stored server-side in a SQLite database (`sessions.db`).
 
 ### Backend
 
+Create and activate a virtual environment:
+
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\activate    # Windows
+```
+
+> **Note**: You need to activate the venv every time you open a new terminal session before running the backend.
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
