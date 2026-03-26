@@ -99,14 +99,14 @@ export default function App() {
         <div className="brand-section">
           <div className="logo-container">
             <SmartToyIcon sx={{ fontSize: 40, color: '#1a2639' }} />
-            <div className="logo-text">Agents Playground</div>
+            <div className="logo-text">OpenAI Agents Lab</div>
           </div>
           <div className="brand-divider" />
           <div className="subtitle">OPENAI AGENTS SDK</div>
         </div>
         <div className="header-links">
           <a
-            href="https://github.com/ali-maraci/openai-agents-playground"
+            href="https://github.com/ali-maraci/openai-agents-lab"
             target="_blank"
             rel="noopener noreferrer"
             className="github-link"

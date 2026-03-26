@@ -10,8 +10,8 @@ from app.api.endpoints import router as chat_router, cleanup_expired_sessions
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 app = FastAPI(
-    title="Agents Playground API",
-    description="Backend API for the OpenAI Agents Playground",
+    title="OpenAI Agents Lab API",
+    description="Backend API for the OpenAI Agents Lab",
     version="1.0.0"
 )
 

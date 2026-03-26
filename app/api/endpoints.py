@@ -290,4 +290,4 @@ async def chat(request: ChatRequest):
 
 @router.get("/health")
 def health_check():
-    return {"status": "Agents Playground API is ready."}
+    return {"status": "OpenAI Agents Lab API is ready."}

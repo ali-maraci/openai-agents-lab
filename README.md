@@ -1,6 +1,6 @@
-# Agents Playground
+# OpenAI Agents Lab
 
-A playground for experimenting with the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python). Features a React chat UI and a FastAPI backend with multi-agent handoffs, custom function tools, guardrails, SSE streaming, and session memory.
+A lab for experimenting with the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python). Features a React chat UI and a FastAPI backend with multi-agent handoffs, custom function tools, guardrails, SSE streaming, and session memory.
 
 ## Architecture
 
