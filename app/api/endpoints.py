@@ -221,7 +221,33 @@ triage_agent = Agent(
 )
 
 
+import sqlite3
+
 DB_PATH = "sessions.db"
+SESSION_EXPIRY_DAYS = 5
+
+
+def cleanup_expired_sessions():
+    """Delete sessions older than SESSION_EXPIRY_DAYS from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_sessions'"
+        )
+        if not cursor.fetchone():
+            return
+        result = conn.execute(
+            f"DELETE FROM agent_sessions WHERE updated_at < datetime('now', '-{SESSION_EXPIRY_DAYS} days')"
+        )
+        deleted_sessions = result.rowcount
+        conn.execute(
+            f"DELETE FROM agent_messages WHERE session_id NOT IN (SELECT session_id FROM agent_sessions)"
+        )
+        conn.commit()
+        if deleted_sessions > 0:
+            logger.info("Cleaned up %d expired sessions (older than %d days)", deleted_sessions, SESSION_EXPIRY_DAYS)
+    finally:
+        conn.close()
 
 
 class ChatRequest(BaseModel):
