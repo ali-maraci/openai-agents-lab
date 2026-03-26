@@ -16,6 +16,7 @@ from agents import (
     input_guardrail,
     output_guardrail,
 )
+from agents.memory import SQLiteSession
 from openai.types.responses import ResponseTextDeltaEvent
 
 router = APIRouter()
@@ -220,17 +221,22 @@ triage_agent = Agent(
 )
 
 
+DB_PATH = "sessions.db"
+
+
 class ChatRequest(BaseModel):
-    messages: list[dict]
+    message: str
+    session_id: str
 
 
 def sse_event(event_type: str, **kwargs) -> str:
     return json.dumps({"type": event_type, **kwargs}) + "\n\n"
 
 
-async def stream_agent_response(messages: list[dict]):
+async def stream_agent_response(message: str, session_id: str):
+    session = SQLiteSession(session_id=session_id, db_path=DB_PATH)
     try:
-        result = Runner.run_streamed(triage_agent, input=messages)
+        result = Runner.run_streamed(triage_agent, input=message, session=session)
         async for event in result.stream_events():
             if event.type == "agent_updated_stream_event":
                 yield sse_event("status", message=f"Routed to {event.new_agent.name}")
@@ -249,9 +255,9 @@ async def stream_agent_response(messages: list[dict]):
 
 @router.post("/chat")
 async def chat(request: ChatRequest):
-    logger.info("Chat request with %d messages", len(request.messages))
+    logger.info("Chat request - session: %s", request.session_id)
     return StreamingResponse(
-        stream_agent_response(request.messages),
+        stream_agent_response(request.message, request.session_id),
         media_type="text/event-stream",
     )
 

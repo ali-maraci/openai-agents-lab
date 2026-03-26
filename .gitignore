@@ -15,6 +15,7 @@ weightloss_rag_pubmed.egg-info/
 
 # Data & Models (Do not commit to Git)
 data/
+sessions.db
 
 # Accidental Cloud SDK Installations
 Y/

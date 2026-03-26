@@ -12,17 +12,13 @@ export interface StreamEvent {
 }
 
 export async function* streamMessage(
-  messages: Message[]
+  message: string,
+  sessionId: string,
 ): AsyncGenerator<StreamEvent> {
   const response = await fetch(`${API_URL}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: messages.map(m => ({
-        role: m.role === 'ai' ? 'assistant' : 'user',
-        content: m.content,
-      })),
-    }),
+    body: JSON.stringify({ message, session_id: sessionId }),
   });
 
   if (!response.ok || !response.body) {

@@ -22,6 +22,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [thinkingStatus, setThinkingStatus] = useState('');
 
+  const sessionId = useRef('session_' + Math.random().toString(36).substring(2, 9));
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -48,7 +49,7 @@ export default function App() {
     });
 
     try {
-      const stream = streamMessage(updatedMessages);
+      const stream = streamMessage(userInput, sessionId.current);
       let accumulatedText = '';
 
       for await (const event of stream) {
