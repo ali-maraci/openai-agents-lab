@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { IconButton, TextField } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
-import { sendMessage, Message } from './services/chatService';
+import { streamMessage, Message } from './services/chatService';
 import './App.scss';
 
 const WELCOME_MESSAGE: Message = {
@@ -20,6 +20,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingStatus, setThinkingStatus] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +29,7 @@ export default function App() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, thinkingStatus]);
 
   const handleSend = async () => {
     if (!userInput.trim() || isLoading) return;
@@ -38,15 +39,48 @@ export default function App() {
     setMessages(updatedMessages);
     setUserInput('');
     setIsLoading(true);
+    setThinkingStatus('Processing...');
+
+    let aiIndex = -1;
+    setMessages(msgs => {
+      aiIndex = msgs.length;
+      return [...msgs, { role: 'ai', content: '' }];
+    });
 
     try {
-      const response = await sendMessage(updatedMessages);
-      setMessages(msgs => [...msgs, { role: 'ai', content: response }]);
+      const stream = streamMessage(updatedMessages);
+      let accumulatedText = '';
+
+      for await (const event of stream) {
+        if (event.type === 'status') {
+          setThinkingStatus(event.message || 'Processing...');
+        } else if (event.type === 'token') {
+          setThinkingStatus('');
+          accumulatedText += (event.content || '');
+          setMessages(msgs => {
+            const next = [...msgs];
+            next[aiIndex] = { role: 'ai', content: accumulatedText };
+            return next;
+          });
+        } else if (event.type === 'error') {
+          setThinkingStatus('');
+          setMessages(msgs => {
+            const next = [...msgs];
+            next[aiIndex] = { role: 'ai', content: event.message || 'An error occurred.' };
+            return next;
+          });
+        }
+      }
     } catch (err) {
       console.error(err);
-      setMessages(msgs => [...msgs, { role: 'ai', content: 'Connection Error: Unable to reach the backend.' }]);
+      setMessages(msgs => {
+        const next = [...msgs];
+        next[aiIndex] = { role: 'ai', content: 'Connection Error: Unable to reach the backend.' };
+        return next;
+      });
     } finally {
       setIsLoading(false);
+      setThinkingStatus('');
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
@@ -90,22 +124,28 @@ export default function App() {
       <div className="chat-container">
         <div className="chat-history" ref={scrollRef}>
           {messages.map((msg, i) => (
-            <div key={i} className={`message-wrapper ${msg.role}`}>
-              {msg.role === 'ai' && AI_AVATAR}
-              <div className="message-bubble">
-                {msg.content}
-              </div>
+            <div
+              key={i}
+              className={`message-wrapper ${msg.role}`}
+              style={{ display: msg.role === 'ai' && !msg.content ? 'none' : 'flex' }}
+            >
+              {msg.role === 'ai' && msg.content && AI_AVATAR}
+              {msg.content && (
+                <div className="message-bubble">
+                  {msg.content}
+                </div>
+              )}
             </div>
           ))}
 
-          {isLoading && (
+          {thinkingStatus && (
             <div className="message-wrapper ai">
               {AI_AVATAR}
               <div className="message-bubble thinking-bubble">
                 <div className="thinking-dots">
                   <span /><span /><span />
                 </div>
-                <span className="thinking-text">Thinking...</span>
+                <span className="thinking-text">{thinkingStatus}</span>
               </div>
             </div>
           )}

@@ -5,7 +5,15 @@ export interface Message {
   content: string;
 }
 
-export async function sendMessage(messages: Message[]): Promise<string> {
+export interface StreamEvent {
+  type: 'status' | 'token' | 'error';
+  message?: string;
+  content?: string;
+}
+
+export async function* streamMessage(
+  messages: Message[]
+): AsyncGenerator<StreamEvent> {
   const response = await fetch(`${API_URL}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -17,10 +25,32 @@ export async function sendMessage(messages: Message[]): Promise<string> {
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Error: ${response.statusText}`);
+  if (!response.ok || !response.body) {
+    throw new Error(`Connection Error: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  return data.response;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            yield JSON.parse(line.trim()) as StreamEvent;
+          } catch {
+            console.warn('Failed to parse SSE line:', line);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.cancel();
+  }
 }

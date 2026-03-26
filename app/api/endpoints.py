@@ -1,7 +1,9 @@
+import json
 import logging
 import re
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from agents import (
     Agent,
@@ -14,6 +16,7 @@ from agents import (
     input_guardrail,
     output_guardrail,
 )
+from openai.types.responses import ResponseTextDeltaEvent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -221,25 +224,36 @@ class ChatRequest(BaseModel):
     messages: list[dict]
 
 
-class ChatResponse(BaseModel):
-    response: str
+def sse_event(event_type: str, **kwargs) -> str:
+    return json.dumps({"type": event_type, **kwargs}) + "\n\n"
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    logger.info("Chat request with %d messages", len(request.messages))
+async def stream_agent_response(messages: list[dict]):
     try:
-        result = await Runner.run(triage_agent, input=request.messages)
-        return ChatResponse(response=result.final_output)
+        result = Runner.run_streamed(triage_agent, input=messages)
+        async for event in result.stream_events():
+            if event.type == "agent_updated_stream_event":
+                yield sse_event("status", message=f"Routed to {event.new_agent.name}")
+            elif event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                yield sse_event("token", content=event.data.delta)
     except InputGuardrailTripwireTriggered as e:
         logger.warning("Input guardrail triggered: %s", e)
-        return ChatResponse(response="Sorry, I can't process that request. Please rephrase your message.")
+        yield sse_event("error", message="Sorry, I can't process that request. Please rephrase your message.")
     except OutputGuardrailTripwireTriggered as e:
         logger.warning("Output guardrail triggered: %s", e)
-        return ChatResponse(response="Sorry, the response was blocked because it may contain sensitive data.")
+        yield sse_event("error", message="Sorry, the response was blocked because it may contain sensitive data.")
     except Exception as e:
         logger.error("Error processing chat request: %s", e)
-        raise HTTPException(status_code=500, detail="Error processing request.")
+        yield sse_event("error", message="An error occurred while processing your request.")
+
+
+@router.post("/chat")
+async def chat(request: ChatRequest):
+    logger.info("Chat request with %d messages", len(request.messages))
+    return StreamingResponse(
+        stream_agent_response(request.messages),
+        media_type="text/event-stream",
+    )
 
 
 @router.get("/health")
