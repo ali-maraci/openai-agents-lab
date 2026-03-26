@@ -2,28 +2,21 @@
 .DS_Store
 .vscode/
 .env
-build_log.txt
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
+.venv/
 venv/
-env/
 .pytest_cache/
 *.egg-info/
-weightloss_rag_pubmed.egg-info/
 
-# Data & Models (Do not commit to Git)
-data/
+# Data
 sessions.db
-
-# Accidental Cloud SDK Installations
-Y/
-google-cloud-sdk/
+sessions.db-shm
+sessions.db-wal
 
 # Frontend
-frontend/.angular/
 frontend/node_modules/
 frontend/dist/
-logs/
