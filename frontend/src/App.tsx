@@ -7,7 +7,7 @@ import './App.scss';
 
 const WELCOME_MESSAGE: Message = {
   role: 'ai',
-  content: 'Hello! I am your AI assistant. Ask me anything!',
+  content: 'Hello! I can route you to the right specialist. Try math ("What is 145 * 37?"), unit conversions ("Convert 100 kg to pounds"), history questions ("When did the Roman Empire fall?"), or anything else!',
 };
 
 const AI_AVATAR = (
