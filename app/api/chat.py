@@ -7,6 +7,8 @@ from agents import (
     InputGuardrailTripwireTriggered,
     OutputGuardrailTripwireTriggered,
     Runner,
+    ToolCallItem,
+    ToolCallOutputItem,
 )
 from agents.memory import SQLiteSession
 from openai.types.responses import ResponseTextDeltaEvent
@@ -34,6 +36,8 @@ async def stream_agent_response(message: str, session_id: str):
     output_chunks: list[str] = []
     final_agent_name: str | None = None
     previous_agent_name: str = "Triage Agent"
+    # Maps call_id -> (tool_name, arguments) for correlating tool calls with their outputs
+    pending_tool_calls: dict[str, tuple[str, str | None]] = {}
 
     try:
         result = Runner.run_streamed(triage_agent, input=message, session=session)
@@ -47,6 +51,25 @@ async def stream_agent_response(message: str, session_id: str):
             elif event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 output_chunks.append(event.data.delta)
                 yield sse_event("token", content=event.data.delta)
+            elif event.type == "run_item_stream_event":
+                if event.name == "tool_called" and isinstance(event.item, ToolCallItem):
+                    raw = event.item.raw_item
+                    tool_name = getattr(raw, "name", None) or (raw.get("name") if isinstance(raw, dict) else None)
+                    call_id = getattr(raw, "call_id", None) or (raw.get("call_id") if isinstance(raw, dict) else None)
+                    arguments = getattr(raw, "arguments", None) or (raw.get("arguments") if isinstance(raw, dict) else None)
+                    if tool_name and call_id:
+                        pending_tool_calls[call_id] = (tool_name, arguments)
+                elif event.name == "tool_output" and isinstance(event.item, ToolCallOutputItem):
+                    raw = event.item.raw_item
+                    call_id = (raw.get("call_id") if isinstance(raw, dict) else getattr(raw, "call_id", None))
+                    output = event.item.output
+                    output_str = output if isinstance(output, str) else json.dumps(output) if output is not None else None
+                    if call_id and call_id in pending_tool_calls:
+                        tool_name, arguments = pending_tool_calls.pop(call_id)
+                        collector.record_tool_call(tool_name, input_data=arguments, output_data=output_str)
+                    elif call_id:
+                        # Output without a matched call — record with unknown name
+                        collector.record_tool_call("unknown", output_data=output_str)
 
         full_output = "".join(output_chunks)
         complete_run(
