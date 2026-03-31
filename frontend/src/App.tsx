@@ -3,6 +3,7 @@ import { IconButton, TextField } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { streamMessage, Message } from './services/chatService';
+import RunsPage from './pages/RunsPage';
 import './App.scss';
 
 const WELCOME_MESSAGE: Message = {
@@ -17,6 +18,7 @@ const AI_AVATAR = (
 );
 
 export default function App() {
+  const [view, setView] = useState<"chat" | "runs">("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +107,12 @@ export default function App() {
           <div className="subtitle">OPENAI AGENTS SDK</div>
         </div>
         <div className="header-links">
+          <button
+            className="runs-link"
+            onClick={() => setView(view === "chat" ? "runs" : "chat")}
+          >
+            {view === "chat" ? "Runs" : "Chat"}
+          </button>
           <a
             href="https://github.com/ali-maraci/openai-agents-lab"
             target="_blank"
@@ -122,6 +130,9 @@ export default function App() {
         </div>
       </header>
 
+      {view === "runs" ? (
+        <RunsPage onBack={() => setView("chat")} />
+      ) : (
       <div className="chat-container">
         <div className="chat-history" ref={scrollRef}>
           {messages.map((msg, i) => (
@@ -209,6 +220,7 @@ export default function App() {
           <p>&copy; 2026 Ali Maraci. All rights reserved.</p>
         </footer>
       </div>
+      )}
     </div>
   );
 }

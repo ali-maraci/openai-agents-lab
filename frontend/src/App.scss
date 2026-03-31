@@ -108,6 +108,25 @@ $gray-text: #4a5568;
                 background-color: color-mix(in srgb, $navy 5%, transparent);
             }
         }
+
+        .runs-link {
+            background: none;
+            border: none;
+            color: $navy;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+        }
     }
 }
 
