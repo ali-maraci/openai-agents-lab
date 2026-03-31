@@ -15,6 +15,7 @@ from app.config import settings
 from app.database import create_run, complete_run
 from app.agents.definitions import triage_agent
 from app.schemas import ChatRequest
+from app.tracing.collector import TraceCollector
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,18 +27,23 @@ def sse_event(event_type: str, **kwargs) -> str:
 
 async def stream_agent_response(message: str, session_id: str):
     run_id = create_run(settings.db_path, session_id=session_id, input_text=message)
+    collector = TraceCollector(run_id=run_id)
     yield sse_event("run_started", run_id=run_id)
 
     session = SQLiteSession(session_id=session_id, db_path=settings.db_path)
     output_chunks: list[str] = []
     final_agent_name: str | None = None
+    previous_agent_name: str = "Triage Agent"
 
     try:
         result = Runner.run_streamed(triage_agent, input=message, session=session)
         async for event in result.stream_events():
             if event.type == "agent_updated_stream_event":
-                final_agent_name = event.new_agent.name
-                yield sse_event("status", message=f"Routed to {event.new_agent.name}")
+                new_name = event.new_agent.name
+                collector.record_handoff(previous_agent_name, new_name)
+                previous_agent_name = new_name
+                final_agent_name = new_name
+                yield sse_event("status", message=f"Routed to {new_name}")
             elif event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                 output_chunks.append(event.data.delta)
                 yield sse_event("token", content=event.data.delta)
@@ -48,19 +54,26 @@ async def stream_agent_response(message: str, session_id: str):
             output=full_output, status="completed",
             final_agent=final_agent_name,
         )
+        collector.flush(settings.db_path)
 
     except InputGuardrailTripwireTriggered as e:
         logger.warning("Input guardrail triggered: %s", e)
+        collector.record_error("input_guardrail", str(e))
+        collector.flush(settings.db_path)
         complete_run(settings.db_path, run_id, output="", status="guardrail_blocked", final_agent="guardrail")
         yield sse_event("error", message="Sorry, I can't process that request. Please rephrase your message.")
 
     except OutputGuardrailTripwireTriggered as e:
         logger.warning("Output guardrail triggered: %s", e)
+        collector.record_error("output_guardrail", str(e))
+        collector.flush(settings.db_path)
         complete_run(settings.db_path, run_id, output="", status="guardrail_blocked", final_agent="guardrail")
         yield sse_event("error", message="Sorry, the response was blocked because it may contain sensitive data.")
 
     except Exception as e:
         logger.error("Error processing chat request: %s", e)
+        collector.record_error("runtime", str(e))
+        collector.flush(settings.db_path)
         complete_run(settings.db_path, run_id, output="", status="failed")
         yield sse_event("error", message="An error occurred while processing your request.")
 

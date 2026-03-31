@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.config import settings
 from app.database import get_run, list_runs
+from app.tracing.store import get_spans_for_run
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,4 +23,5 @@ def get_run_detail(run_id: str):
     run = get_run(settings.db_path, run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+    run["spans"] = get_spans_for_run(settings.db_path, run_id)
     return run
