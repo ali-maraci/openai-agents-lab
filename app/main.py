@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, cleanup_expired_sessions
 from app.api.chat import router as chat_router
 from app.api.runs import router as runs_router
 
@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db(settings.db_path)
+    cleanup_expired_sessions(settings.db_path, settings.session_expiry_days)
     yield
 
 

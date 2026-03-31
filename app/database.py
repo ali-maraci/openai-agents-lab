@@ -106,6 +106,30 @@ def get_run(db_path: str, run_id: str) -> dict | None:
     return result
 
 
+def cleanup_expired_sessions(db_path: str, expiry_days: int) -> None:
+    """Delete sessions older than expiry_days."""
+    import logging
+    conn = _connect(db_path)
+    try:
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='agent_sessions'"
+        )
+        if not cursor.fetchone():
+            return
+        result = conn.execute(
+            f"DELETE FROM agent_sessions WHERE updated_at < datetime('now', '-{expiry_days} days')"
+        )
+        deleted = result.rowcount
+        conn.execute(
+            "DELETE FROM agent_messages WHERE session_id NOT IN (SELECT session_id FROM agent_sessions)"
+        )
+        conn.commit()
+        if deleted > 0:
+            logging.getLogger(__name__).info("Cleaned up %d expired sessions", deleted)
+    finally:
+        conn.close()
+
+
 def list_runs(db_path: str, limit: int = 50, offset: int = 0) -> list[dict]:
     conn = _connect(db_path)
     cursor = conn.execute(
