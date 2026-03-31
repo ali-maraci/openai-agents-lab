@@ -1,18 +1,31 @@
 import logging
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import router as chat_router, cleanup_expired_sessions
+
+from app.config import settings
+from app.database import init_db
+from app.api.chat import router as chat_router
+from app.api.runs import router as runs_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db(settings.db_path)
+    yield
+
 
 app = FastAPI(
     title="OpenAI Agents Lab API",
     description="Backend API for the OpenAI Agents Lab",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -24,11 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(chat_router, prefix="/api")
-
-
-@app.on_event("startup")
-def startup_cleanup():
-    cleanup_expired_sessions()
+app.include_router(runs_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn
