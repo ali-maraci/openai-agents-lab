@@ -2,3 +2,6 @@ openai-agents>=0.13.1
 fastapi
 uvicorn[standard]
 python-dotenv
+pytest
+pytest-asyncio
+httpx
