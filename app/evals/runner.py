@@ -4,7 +4,6 @@ import time
 
 from agents import Runner
 
-from app.agents.definitions import triage_agent
 from app.database import create_run, complete_run
 from app.evals.datasets import load_dataset
 from app.evals.graders import get_grader
@@ -22,6 +21,7 @@ async def execute_case(case: dict, db_path: str, agent=None) -> dict:
     Returns dict with: run_id, output, agent, latency_ms, and optionally error.
     """
     if agent is None:
+        from app.agents.definitions import triage_agent
         agent = triage_agent
     run_id = create_run(db_path, session_id="eval", input_text=case["input"])
     start = time.monotonic()
