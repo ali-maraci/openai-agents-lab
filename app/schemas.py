@@ -22,3 +22,20 @@ class RunSummary(BaseModel):
 
 class RunDetail(RunSummary):
     spans: list[dict]
+
+
+class EvalRunRequest(BaseModel):
+    dataset: str
+
+
+class EvalSummary(BaseModel):
+    id: str
+    dataset_name: str
+    status: str
+    total_cases: int
+    passed: int
+    failed: int
+    pass_rate: float | None
+    avg_latency_ms: float | None
+    started_at: str
+    completed_at: str | None
