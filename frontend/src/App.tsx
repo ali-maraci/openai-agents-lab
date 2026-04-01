@@ -5,6 +5,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import { streamMessage, Message } from './services/chatService';
 import RunsPage from './pages/RunsPage';
 import ComparePage from './pages/ComparePage';
+import DashboardPage from './pages/DashboardPage';
 import './App.scss';
 
 const WELCOME_MESSAGE: Message = {
@@ -19,7 +20,7 @@ const AI_AVATAR = (
 );
 
 export default function App() {
-  const [view, setView] = useState<"chat" | "runs" | "compare">("chat");
+  const [view, setView] = useState<"chat" | "runs" | "compare" | "dashboard">("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +121,12 @@ export default function App() {
           >
             {view === "compare" ? "Chat" : "Compare"}
           </button>
+          <button
+            className="runs-link"
+            onClick={() => setView(view === "dashboard" ? "chat" : "dashboard")}
+          >
+            {view === "dashboard" ? "Chat" : "Dashboard"}
+          </button>
           <a
             href="https://github.com/ali-maraci/openai-agents-lab"
             target="_blank"
@@ -141,6 +148,8 @@ export default function App() {
         <RunsPage onBack={() => setView("chat")} />
       ) : view === "compare" ? (
         <ComparePage onBack={() => setView("chat")} />
+      ) : view === "dashboard" ? (
+        <DashboardPage onBack={() => setView("chat")} />
       ) : (
       <div className="chat-container">
         <div className="chat-history" ref={scrollRef}>
