@@ -1,104 +1,8 @@
 # OpenAI Agents Lab
 
-A lab for experimenting with the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python). Features a React chat UI and a FastAPI backend with multi-agent handoffs, custom function tools, guardrails, SSE streaming, and session memory.
+An eval and observability-first platform built on the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python). Multi-agent orchestration with full tracing, automated benchmarking, experiment comparison, and a monitoring dashboard.
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Frontend (React + Vite + MUI)                                      │
-│  http://localhost:5173                                               │
-│                                                                     │
-│  ┌───────────────┐  POST /api/chat (SSE)  ┌──────────────────────┐  │
-│  │   Chat UI     │ ──────────────────────> │  FastAPI Backend     │  │
-│  │               │ <────── token stream ── │  http://localhost:8000│  │
-│  └───────────────┘                        └──────────┬───────────┘  │
-└──────────────────────────────────────────────────────┼──────────────┘
-                                                       │
-                                    Runner.run_streamed(triage_agent,
-                                         session=SQLiteSession)
-                                                       │
-                  ┌────────────────────────────────────┼───────────┐
-                  │                                    ▼           │
-                  │  ┌──────────────────────────────────────────┐  │
-                  │  │  Input Guardrails (run in parallel)      │  │
-                  │  │  - Prompt injection detector (agent)     │  │
-                  │  │  - Inappropriate content checker (agent) │  │
-                  │  └──────────────────────────────────────────┘  │
-                  │                    │                            │
-                  │                    ▼                            │
-                  │  ┌──────────────────────────────────────────┐  │
-                  │  │            Triage Agent                  │  │
-                  │  │    Routes to the right specialist        │  │
-                  │  └──────┬──────────┬──────────────┬─────────┘  │
-                  │         │ handoff   │ handoff       │ handoff   │
-                  │         ▼          ▼              ▼           │
-                  │  ┌───────────┐ ┌───────────┐ ┌────────────┐   │
-                  │  │Math Agent │ │History    │ │General     │   │
-                  │  │           │ │Agent      │ │Agent       │   │
-                  │  │Tools:     │ │           │ │            │   │
-                  │  │-calculate │ │No tools   │ │No tools    │   │
-                  │  │-convert_* │ │           │ │            │   │
-                  │  └───────────┘ └───────────┘ └────────────┘   │
-                  │                    │                            │
-                  │                    ▼                            │
-                  │  ┌──────────────────────────────────────────┐  │
-                  │  │  Output Guardrail                        │  │
-                  │  │  - Sensitive data leakage check (regex)  │  │
-                  │  └──────────────────────────────────────────┘  │
-                  │                                                │
-                  │  OpenAI Agents SDK                              │
-                  └────────────────────────────────────────────────┘
-                                       │
-              ┌────────────────────────┼────────────────────────┐
-              ▼                        ▼                        ▼
-   ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
-   │   OpenAI API    │   │  SQLite Memory  │   │  sessions.db    │
-   │   (LLM calls)   │   │  (session store) │   │  (on disk)      │
-   └─────────────────┘   └─────────────────┘   └─────────────────┘
-```
-
-## Request Flow
-
-```
-User types message
-       │
-       ▼
-Frontend sends POST /api/chat { message, session_id } (SSE stream)
-       │
-       ▼
-Backend loads session history from SQLiteSession (sessions.db)
-       │
-       ▼
-Input guardrails run in parallel (prompt injection + content check)
-       │
-       ▼
-Triage Agent ──► OpenAI API (1st call: decide which specialist)
-       │
-       ▼
-Handoff to specialist agent (e.g. Math Agent)
-       │
-       ▼
-Specialist Agent ──► OpenAI API (2nd call: may invoke tools)
-       │
-       ▼ (if tool used)
-Tool runs locally (e.g. calculate("145 * 37") → "5365")
-       │
-       ▼
-Specialist Agent ──► OpenAI API (3rd call: format final answer)
-       │
-       ▼
-Output guardrail checks response for sensitive data
-       │
-       ▼
-Tokens streamed back to frontend via SSE as they arrive
-       │
-       ▼
-Session history saved to SQLiteSession (sessions.db)
-       │
-       ▼
-UI displays tokens in real-time in chat bubble
-```
+![Chat Interface](docs/images/chat-interface.png)
 
 ## Features
 
@@ -106,22 +10,55 @@ UI displays tokens in real-time in chat bubble
 |---------|-------------|
 | **Multi-agent handoffs** | Triage agent routes to Math, History, or General specialist |
 | **Function tools** | Calculator and unit converters (temperature, distance, weight) |
-| **Input guardrails** | Agent-based prompt injection and content moderation checks |
-| **Output guardrails** | Regex-based detection of API keys, tokens, SSNs in responses |
+| **Guardrails** | Input: prompt injection + content moderation. Output: sensitive data detection |
 | **SSE streaming** | Token-by-token response streaming with handoff status updates |
-| **Session memory** | SQLite-backed conversation history, persists across server restarts |
-| **Session expiry** | Expired sessions auto-cleaned on startup (default: 5 days) |
+| **Run tracking** | Every chat interaction persisted with status, latency, agent, token counts |
+| **Tracing** | Structured spans for agent handoffs, tool calls, and errors |
+| **Benchmarks** | JSON dataset system with 19 test cases across 3 datasets |
+| **Eval engine** | 5 graders (exact match, agent match, contains, rubric, trajectory) |
+| **Experiments** | Compare agent versions with regression detection |
+| **Dashboard** | Aggregate metrics, failure tagging, latency percentiles, alerting |
+| **92 tests** | Full test coverage across all modules |
 
-## Session Memory
+## Screenshots
 
-Conversation history is stored server-side in a SQLite database (`sessions.db`).
+### Runs
 
-- Each browser tab generates a unique `session_id`
-- The backend uses `SQLiteSession` from the Agents SDK to store all messages (user + assistant) per session
-- On each request, the SDK loads prior conversation from the DB and includes it as context
-- Sessions persist across server restarts (file-based, not in-memory)
-- **Expiry**: Sessions older than 5 days (based on `updated_at`) are automatically deleted on server startup, along with their messages
-- The expiry period is configurable via `SESSION_EXPIRY_DAYS` in `app/api/endpoints.py`
+View every agent run with routing info, status, and latency. Click any row to inspect the full trace.
+
+![Runs List](docs/images/runs-list.png)
+
+### Run Trace
+
+See exactly what happened: agent handoffs, tool calls with inputs/outputs, and timing for each step.
+
+![Run Trace](docs/images/run-trace.png)
+
+### Dashboard
+
+Monitor agent health: total runs, success/failure rates, latency percentiles, agent distribution, and failure breakdown.
+
+![Dashboard](docs/images/dashboard.png)
+
+## Architecture
+
+```
+Frontend (React + Vite + MUI)                    Backend (FastAPI + OpenAI Agents SDK)
+http://localhost:5173                             http://localhost:8000
+
+ Chat ──── POST /api/chat (SSE) ──────────────── Triage Agent ── handoff ── Specialists
+ Runs ──── GET /api/runs ─────────────────────── Run & Trace Store (SQLite)
+ Compare ─ POST /api/experiments/compare ──────── Eval Runner ── Graders ── Results
+ Dashboard GET /api/dashboard/metrics ─────────── Metrics Aggregation ── Alerts
+```
+
+### Request Flow
+
+```
+User message ── Frontend ── POST /api/chat ── Input Guardrails ── Triage Agent
+    ── Handoff to Specialist ── Tool Calls (if needed) ── Output Guardrail
+    ── SSE tokens streamed back ── Run + Trace saved to SQLite
+```
 
 ## Setup
 
@@ -129,22 +66,14 @@ Conversation history is stored server-side in a SQLite database (`sessions.db`).
 
 - Python 3.10+
 - Node.js 18+
+- OpenAI API key
 
 ### Backend
 
-Create and activate a virtual environment:
-
 ```bash
+cd openai-agents-lab
 python -m venv .venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\activate    # Windows
-```
-
-> **Note**: You need to activate the venv every time you open a new terminal session before running the backend.
-
-Install dependencies:
-
-```bash
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -154,7 +83,7 @@ Create a `.env` file:
 OPENAI_API_KEY=your-key-here
 ```
 
-Run the backend:
+Start the backend:
 
 ```bash
 uvicorn app.main:app --reload
@@ -170,25 +99,107 @@ npm run dev
 
 Open http://localhost:5173
 
+### Run Tests
+
+```bash
+.venv/bin/python -m pytest -v -m "not llm"
+```
+
 ## Project Structure
 
 ```
-.
-├── app/
-│   ├── main.py              # FastAPI app, CORS, session cleanup on startup
-│   └── api/
-│       └── endpoints.py     # Agents, tools, guardrails, streaming endpoint
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx           # Chat UI with streaming + session ID
-│   │   ├── App.scss          # Styling
-│   │   └── services/
-│   │       └── chatService.ts # SSE stream consumer
-│   └── package.json
-├── sessions.db               # SQLite session store (auto-created, gitignored)
-├── requirements.txt
-└── test.py                   # Standalone agent test script
+app/
+├── main.py                  # FastAPI app, lifespan, routers
+├── config.py                # Settings (DB_PATH, SESSION_EXPIRY_DAYS)
+├── database.py              # SQLite schema, run CRUD, session cleanup
+├── schemas.py               # Pydantic request/response models
+├── agents/
+│   ├── definitions.py       # Triage, Math, History, General agents
+│   ├── tools.py             # calculate, convert_temperature/distance/weight
+│   └── guardrails.py        # Prompt injection, content check, sensitive data
+├── api/
+│   ├── chat.py              # POST /chat (SSE streaming + run tracking)
+│   ├── runs.py              # GET /runs, GET /runs/{id}
+│   ├── evals.py             # POST /evals/run, GET /evals/{id}, GET /evals/summary
+│   ├── versions.py          # POST /versions, GET /versions
+│   ├── experiments.py       # POST /experiments/compare, GET /experiments/{id}
+│   └── dashboard.py         # GET /dashboard/metrics, failures, alerts
+├── tracing/
+│   ├── collector.py         # TraceCollector (handoffs, tool calls, errors)
+│   └── store.py             # Persist/retrieve spans from SQLite
+├── evals/
+│   ├── datasets.py          # Load/validate benchmark JSON files
+│   ├── graders.py           # exact_match, agent_match, contains, rubric, trajectory
+│   ├── runner.py            # Execute eval runs (agent per case, grade, store)
+│   └── store.py             # Eval run + case result persistence
+├── experiments/
+│   ├── compare.py           # Diff pass rates, detect regressions, per-case diff
+│   └── runner.py            # Run baseline vs candidate, store comparison
+├── versioning/
+│   └── registry.py          # Snapshot agent configs, list/get versions
+└── monitoring/
+    ├── metrics.py            # Run stats, distributions, percentiles, time-series
+    ├── failure_tags.py       # Auto-tag: timeout, looping, schema_error
+    └── alerts.py             # Threshold alerts, resolve
+
+frontend/src/
+├── App.tsx                   # Chat UI + navigation (Runs, Compare, Dashboard)
+├── pages/
+│   ├── RunsPage.tsx          # Runs table + trace detail view
+│   ├── ComparePage.tsx       # Version management + experiment execution
+│   └── DashboardPage.tsx     # Stat cards, charts, failure breakdown, alerts
+└── services/
+    ├── chatService.ts        # SSE stream consumer
+    ├── runsService.ts        # Runs API client
+    ├── experimentsService.ts # Versions + experiments API client
+    └── dashboardService.ts   # Dashboard metrics API client
+
+benchmarks/
+├── tool_routing.json         # 10 cases: does triage route correctly?
+├── unit_conversion.json      # 6 cases: do conversions return correct values?
+└── general_qa.json           # 3 cases: rubric-graded response quality
+
+tests/                        # 92 tests across all modules
 ```
+
+## API Reference
+
+### Chat
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/chat` | Stream agent response (SSE) |
+| GET | `/api/health` | Health check |
+
+### Runs & Tracing
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/runs` | List runs (most recent first) |
+| GET | `/api/runs/{id}` | Run detail with trace spans |
+
+### Evals
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/evals/run` | Start eval run (background) |
+| GET | `/api/evals/{id}` | Eval detail with case results |
+| GET | `/api/evals/summary` | List eval runs with metrics |
+| GET | `/api/evals/datasets` | List available benchmarks |
+
+### Versions & Experiments
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/versions` | Snapshot current agent config |
+| GET | `/api/versions` | List versions |
+| GET | `/api/versions/{id}` | Version detail |
+| POST | `/api/experiments/compare` | Start experiment (background) |
+| GET | `/api/experiments/{id}` | Experiment results |
+
+### Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard/metrics` | Run stats, distributions, percentiles |
+| GET | `/api/dashboard/failures` | Failure tag summary |
+| GET | `/api/dashboard/alerts` | Active alerts |
+| POST | `/api/dashboard/alerts/{id}/resolve` | Resolve an alert |
 
 ## Tools
 
@@ -199,10 +210,16 @@ Open http://localhost:5173
 | `convert_distance` | Converts between km, miles, meters, and feet |
 | `convert_weight` | Converts between kg, lbs, grams, and ounces |
 
-## Guardrails
+## Graders
 
-| Guardrail | Type | Method |
-|-----------|------|--------|
-| Prompt injection detector | Input | Agent-based classifier |
-| Inappropriate content checker | Input | Agent-based classifier |
-| Sensitive data leakage | Output | Regex (API keys, AWS keys, GitHub tokens, SSNs) |
+| Grader | Type | Description |
+|--------|------|-------------|
+| `exact_match` | Sync | Case-insensitive string comparison |
+| `agent_match` | Sync | Correct agent routing check |
+| `contains` | Sync | Substring match in output |
+| `rubric` | Async (LLM) | LLM grades response against a rubric (0.0-1.0) |
+| `trajectory` | Async | Validates trace spans match expected step sequence |
+
+## License
+
+MIT
