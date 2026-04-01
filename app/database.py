@@ -106,6 +106,31 @@ def init_db(db_path: str) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_agent_versions_name ON agent_versions(name);
             CREATE INDEX IF NOT EXISTS idx_experiments_dataset ON experiments(dataset_name);
+
+            CREATE TABLE IF NOT EXISTS failure_tags (
+                id TEXT PRIMARY KEY,
+                run_id TEXT NOT NULL REFERENCES runs(id),
+                tag TEXT NOT NULL,
+                confidence REAL DEFAULT 1.0,
+                source TEXT NOT NULL DEFAULT 'auto',
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS alerts (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                severity TEXT NOT NULL DEFAULT 'warning',
+                message TEXT NOT NULL,
+                metric_name TEXT,
+                metric_value REAL,
+                threshold REAL,
+                resolved INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_failure_tags_run ON failure_tags(run_id);
+            CREATE INDEX IF NOT EXISTS idx_failure_tags_tag ON failure_tags(tag);
+            CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved);
         """)
     conn.close()
 
