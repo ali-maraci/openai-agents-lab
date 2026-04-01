@@ -50,6 +50,38 @@ def init_db(db_path: str) -> None:
             CREATE INDEX IF NOT EXISTS idx_spans_run_id ON trace_spans(run_id);
             CREATE INDEX IF NOT EXISTS idx_runs_session ON runs(session_id);
             CREATE INDEX IF NOT EXISTS idx_runs_started ON runs(started_at);
+
+            CREATE TABLE IF NOT EXISTS eval_runs (
+                id TEXT PRIMARY KEY,
+                dataset_name TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                status TEXT NOT NULL DEFAULT 'running',
+                total_cases INTEGER DEFAULT 0,
+                passed INTEGER DEFAULT 0,
+                failed INTEGER DEFAULT 0,
+                pass_rate REAL,
+                avg_latency_ms REAL
+            );
+
+            CREATE TABLE IF NOT EXISTS eval_case_results (
+                id TEXT PRIMARY KEY,
+                eval_run_id TEXT NOT NULL REFERENCES eval_runs(id),
+                case_id TEXT NOT NULL,
+                input TEXT NOT NULL,
+                expected_output TEXT,
+                actual_output TEXT,
+                expected_agent TEXT,
+                actual_agent TEXT,
+                run_id TEXT,
+                passed INTEGER NOT NULL DEFAULT 0,
+                scores TEXT,
+                latency_ms INTEGER,
+                error TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_eval_case_run ON eval_case_results(eval_run_id);
+            CREATE INDEX IF NOT EXISTS idx_eval_runs_dataset ON eval_runs(dataset_name);
         """)
     conn.close()
 

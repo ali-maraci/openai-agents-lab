@@ -53,3 +53,16 @@ def test_list_runs_with_limit(tmp_db_path):
         create_run(tmp_db_path, session_id=f"s{i}", input_text=f"msg{i}")
     runs = list_runs(tmp_db_path, limit=2)
     assert len(runs) == 2
+
+
+def test_init_db_creates_eval_tables(tmp_db_path):
+    """init_db should create eval_runs and eval_case_results tables."""
+    init_db(tmp_db_path)
+    conn = sqlite3.connect(tmp_db_path)
+    tables = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).fetchall()
+    table_names = [t[0] for t in tables]
+    assert "eval_runs" in table_names
+    assert "eval_case_results" in table_names
+    conn.close()
