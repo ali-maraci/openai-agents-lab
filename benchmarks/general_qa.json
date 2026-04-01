@@ -1,0 +1,10 @@
+{
+  "name": "general_qa",
+  "description": "Tests general response quality with rubric grading",
+  "graders": ["rubric"],
+  "cases": [
+    {"id": "gq_001", "input": "What is photosynthesis?", "rubric": "Response should mention: plants, sunlight, carbon dioxide, oxygen, energy. Should be clear and accurate.", "tags": ["science", "explanation"]},
+    {"id": "gq_002", "input": "Explain what an API is in simple terms", "rubric": "Response should explain APIs as interfaces between software systems. Should use simple language and ideally include an analogy. Should not be overly technical.", "tags": ["technology", "explanation"]},
+    {"id": "gq_003", "input": "What causes rain?", "rubric": "Response should mention the water cycle: evaporation, condensation, precipitation. Should be factually correct.", "tags": ["science", "explanation"]}
+  ]
+}

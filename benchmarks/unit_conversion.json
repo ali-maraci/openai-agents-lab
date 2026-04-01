@@ -1,0 +1,13 @@
+{
+  "name": "unit_conversion",
+  "description": "Tests that conversion tools produce correct results",
+  "graders": ["contains"],
+  "cases": [
+    {"id": "uc_001", "input": "Convert 0 celsius to fahrenheit", "expected_output": "32", "tags": ["temperature"]},
+    {"id": "uc_002", "input": "Convert 100 celsius to fahrenheit", "expected_output": "212", "tags": ["temperature"]},
+    {"id": "uc_003", "input": "Convert 1 kilometer to miles", "expected_output": "0.6214", "tags": ["distance"]},
+    {"id": "uc_004", "input": "Convert 1 mile to kilometers", "expected_output": "1.6093", "tags": ["distance"]},
+    {"id": "uc_005", "input": "Convert 1 kilogram to pounds", "expected_output": "2.2046", "tags": ["weight"]},
+    {"id": "uc_006", "input": "Convert 100 pounds to kilograms", "expected_output": "45.3592", "tags": ["weight"]}
+  ]
+}

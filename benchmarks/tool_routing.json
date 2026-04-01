@@ -1,0 +1,17 @@
+{
+  "name": "tool_routing",
+  "description": "Tests that the triage agent routes to the correct specialist agent",
+  "graders": ["agent_match"],
+  "cases": [
+    {"id": "tr_001", "input": "What is 2 + 2?", "expected_agent": "Math_Conversion_Agent", "tags": ["routing", "math"]},
+    {"id": "tr_002", "input": "Calculate 15 * 23", "expected_agent": "Math_Conversion_Agent", "tags": ["routing", "math"]},
+    {"id": "tr_003", "input": "Convert 100 celsius to fahrenheit", "expected_agent": "Math_Conversion_Agent", "tags": ["routing", "conversion"]},
+    {"id": "tr_004", "input": "How many miles is 10 kilometers?", "expected_agent": "Math_Conversion_Agent", "tags": ["routing", "conversion"]},
+    {"id": "tr_005", "input": "When did World War 2 end?", "expected_agent": "History Agent", "tags": ["routing", "history"]},
+    {"id": "tr_006", "input": "Who was the first Roman emperor?", "expected_agent": "History Agent", "tags": ["routing", "history"]},
+    {"id": "tr_007", "input": "Tell me about the French Revolution", "expected_agent": "History Agent", "tags": ["routing", "history"]},
+    {"id": "tr_008", "input": "What is the meaning of life?", "expected_agent": "General Agent", "tags": ["routing", "general"]},
+    {"id": "tr_009", "input": "Hello, how are you?", "expected_agent": "General Agent", "tags": ["routing", "general"]},
+    {"id": "tr_010", "input": "Explain what photosynthesis is", "expected_agent": "General Agent", "tags": ["routing", "general"]}
+  ]
+}
