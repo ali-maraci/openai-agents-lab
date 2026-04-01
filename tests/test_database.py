@@ -66,3 +66,15 @@ def test_init_db_creates_eval_tables(tmp_db_path):
     assert "eval_runs" in table_names
     assert "eval_case_results" in table_names
     conn.close()
+
+
+def test_init_db_creates_versioning_tables(tmp_db_path):
+    init_db(tmp_db_path)
+    conn = sqlite3.connect(tmp_db_path)
+    tables = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).fetchall()
+    table_names = [t[0] for t in tables]
+    assert "agent_versions" in table_names
+    assert "experiments" in table_names
+    conn.close()

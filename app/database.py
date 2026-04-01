@@ -82,6 +82,30 @@ def init_db(db_path: str) -> None:
 
             CREATE INDEX IF NOT EXISTS idx_eval_case_run ON eval_case_results(eval_run_id);
             CREATE INDEX IF NOT EXISTS idx_eval_runs_dataset ON eval_runs(dataset_name);
+
+            CREATE TABLE IF NOT EXISTS agent_versions (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                agent_config TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS experiments (
+                id TEXT PRIMARY KEY,
+                dataset_name TEXT NOT NULL,
+                baseline_version_id TEXT NOT NULL REFERENCES agent_versions(id),
+                candidate_version_id TEXT NOT NULL REFERENCES agent_versions(id),
+                baseline_eval_id TEXT REFERENCES eval_runs(id),
+                candidate_eval_id TEXT REFERENCES eval_runs(id),
+                status TEXT NOT NULL DEFAULT 'running',
+                started_at TEXT NOT NULL,
+                completed_at TEXT,
+                result TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_agent_versions_name ON agent_versions(name);
+            CREATE INDEX IF NOT EXISTS idx_experiments_dataset ON experiments(dataset_name);
         """)
     conn.close()
 
