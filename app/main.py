@@ -12,6 +12,8 @@ from app.database import init_db, cleanup_expired_sessions
 from app.api.chat import router as chat_router
 from app.api.runs import router as runs_router
 from app.api.evals import router as evals_router
+from app.api.versions import router as versions_router
+from app.api.experiments import router as experiments_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -41,6 +43,8 @@ app.add_middleware(
 app.include_router(chat_router, prefix="/api")
 app.include_router(runs_router, prefix="/api")
 app.include_router(evals_router, prefix="/api")
+app.include_router(versions_router, prefix="/api")
+app.include_router(experiments_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

@@ -39,3 +39,15 @@ class EvalSummary(BaseModel):
     avg_latency_ms: float | None
     started_at: str
     completed_at: str | None
+
+
+class CreateVersionRequest(BaseModel):
+    name: str
+    description: str | None = None
+    snapshot_current: bool = True
+
+
+class ExperimentRequest(BaseModel):
+    dataset: str
+    baseline_version_id: str
+    candidate_version_id: str
